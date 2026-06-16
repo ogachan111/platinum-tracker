@@ -12,18 +12,14 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v4
-
       - name: setup-python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
       - name: install-libs
         run: pip install requests beautifulsoup4
-
       - name: fetch-price
         run: python fetch_platinum.py
-
       - name: commit
         run: |
           git config --local user.email "action@github.com"
