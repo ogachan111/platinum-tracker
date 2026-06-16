@@ -1,4 +1,4 @@
-name: platinum-update
+name: platinum-update 
 
 on:
   schedule:
