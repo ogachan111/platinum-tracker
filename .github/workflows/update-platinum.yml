@@ -1,5 +1,4 @@
-yaml
-name: プラチナ価格 自動更新
+name: platinum-update
 
 on:
   schedule:
@@ -10,26 +9,25 @@ on:
 jobs:
   update-price:
     runs-on: ubuntu-latest
-
     steps:
-      - name: リポジトリをチェックアウト
+      - name: checkout
         uses: actions/checkout@v4
 
-      - name: Pythonをセットアップ
+      - name: setup-python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: 必要なライブラリをインストール
+      - name: install-libs
         run: pip install requests beautifulsoup4
 
-      - name: プラチナ価格を取得してHTMLを更新
+      - name: fetch-price
         run: python fetch_platinum.py
 
-      - name: 変更をコミット＆プッシュ
+      - name: commit
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Actions"
           git add index.html
-          git diff --staged --quiet || git commit -m "🤖 プラチナ価格を自動更新 $(date +'%Y/%m/%d %H:%M JST')"
+          git diff --staged --quiet || git commit -m "auto update"
           git push
