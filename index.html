@@ -87,7 +87,7 @@
   .range-tabs { display: flex; gap: 2px; }
   .range-tab { padding: 3px 9px; border: none; background: transparent; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; font-size: 10px; cursor: pointer; border-radius: 4px; transition: all .15s; }
   .range-tab.active { background: var(--accent-dim); color: var(--accent); }
-  .chart-wrap { height: 120px; }
+  .chart-wrap { height: 200px; }
   #sparkline { width: 100%; height: 100%; display: block; overflow: visible; }
 
   /* ── Stats ── */
@@ -233,14 +233,14 @@
       </div>
     </div>
     <div class="chart-wrap">
-      <svg id="sparkline" viewBox="0 0 440 120" preserveAspectRatio="none">
+      <svg id="sparkline" viewBox="0 0 440 200" preserveAspectRatio="none">
         <defs>
           <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
             <stop offset="0%" stop-color="#4ECDC4" stop-opacity="0.4"/>
             <stop offset="100%" stop-color="#4ECDC4"/>
           </linearGradient>
           <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#4ECDC4" stop-opacity="0.15"/>
+            <stop offset="0%" stop-color="#4ECDC4" stop-opacity="0.2"/>
             <stop offset="100%" stop-color="#4ECDC4" stop-opacity="0"/>
           </linearGradient>
           <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
@@ -248,9 +248,21 @@
             <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
           </filter>
         </defs>
+        <!-- グリッド線 -->
+        <g id="chartGrid"></g>
+        <!-- 最高値・最安値ライン -->
+        <line id="highLine" x1="0" y1="0" x2="440" y2="0" stroke="rgba(255,107,107,0.3)" stroke-width="1" stroke-dasharray="4,3"/>
+        <line id="lowLine" x1="0" y1="0" x2="440" y2="0" stroke="rgba(78,205,196,0.3)" stroke-width="1" stroke-dasharray="4,3"/>
+        <!-- 最高値・最安値ラベル -->
+        <text id="highLabel" x="436" y="0" text-anchor="end" fill="rgba(255,107,107,0.8)" font-family="JetBrains Mono" font-size="9"></text>
+        <text id="lowLabel" x="436" y="0" text-anchor="end" fill="rgba(78,205,196,0.8)" font-family="JetBrains Mono" font-size="9"></text>
+        <!-- エリアと線 -->
         <path id="sparkArea" fill="url(#areaGrad)"/>
-        <path id="sparkLine" fill="none" stroke="url(#lineGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        <circle id="sparkDot" r="4" fill="#4ECDC4" filter="url(#glow)"/>
+        <path id="sparkLine" fill="none" stroke="url(#lineGrad)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <!-- 日付ラベル -->
+        <g id="dateLabels"></g>
+        <!-- 現在値ドット -->
+        <circle id="sparkDot" r="5" fill="#4ECDC4" filter="url(#glow)"/>
       </svg>
     </div>
   </div>
@@ -443,13 +455,81 @@ function getChartData() {
 }
 function drawChart() {
   const data = getChartData();
+  const dates = (() => {
+    const n = currentRange === '1M' ? 22 : currentRange === '3M' ? 66 : 9999;
+    return TANAKA_DATA.history.slice(0, n)
+      .filter(h => priceType === 'retail' ? h.retail : h.buy)
+      .map(h => h.date).reverse();
+  })();
   if (data.length < 2) return;
-  const W = 440, H = 120, P = 8;
-  const mn = Math.min(...data) * 0.997, mx = Math.max(...data) * 1.003;
-  const pts = data.map((v, i) => [(i / (data.length - 1)) * W, H - P - ((v - mn) / (mx - mn)) * (H - P * 2)]);
+
+  const W = 440, H = 200, PT = 20, PB = 28, PL = 4, PR = 4;
+  const chartH = H - PT - PB;
+  const mn = Math.min(...data), mx = Math.max(...data);
+  const pad = (mx - mn) * 0.08 || 100;
+  const minV = mn - pad, maxV = mx + pad;
+
+  const xOf = i => PL + (i / (data.length - 1)) * (W - PL - PR);
+  const yOf = v => PT + chartH - ((v - minV) / (maxV - minV)) * chartH;
+
+  const pts = data.map((v, i) => [xOf(i), yOf(v)]);
   const line = pts.map(([x,y],i) => `${i?'L':'M'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
   document.getElementById('sparkLine').setAttribute('d', line);
-  document.getElementById('sparkArea').setAttribute('d', `${line} L${W},${H} L0,${H} Z`);
+  document.getElementById('sparkArea').setAttribute('d', `${line} L${W-PR},${PT+chartH} L${PL},${PT+chartH} Z`);
+
+  // 最高値・最安値ライン
+  const hiIdx = data.indexOf(mx);
+  const loIdx = data.indexOf(mn);
+  const hiY = yOf(mx).toFixed(1);
+  const loY = yOf(mn).toFixed(1);
+  document.getElementById('highLine').setAttribute('y1', hiY);
+  document.getElementById('highLine').setAttribute('y2', hiY);
+  document.getElementById('lowLine').setAttribute('y1', loY);
+  document.getElementById('lowLine').setAttribute('y2', loY);
+  document.getElementById('highLabel').setAttribute('y', (parseFloat(hiY) - 3).toFixed(1));
+  document.getElementById('highLabel').textContent = `最高 ¥${mx.toLocaleString()}`;
+  document.getElementById('lowLabel').setAttribute('y', (parseFloat(loY) + 10).toFixed(1));
+  document.getElementById('lowLabel').textContent = `最安 ¥${mn.toLocaleString()}`;
+
+  // グリッド線（横3本）
+  const grid = document.getElementById('chartGrid');
+  grid.innerHTML = '';
+  [0.25, 0.5, 0.75].forEach(r => {
+    const gy = (PT + chartH * (1 - r)).toFixed(1);
+    const price = Math.round(minV + (maxV - minV) * r);
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1', PL); line.setAttribute('x2', W - PR);
+    line.setAttribute('y1', gy); line.setAttribute('y2', gy);
+    line.setAttribute('stroke', 'rgba(255,255,255,0.05)');
+    line.setAttribute('stroke-width', '1');
+    grid.appendChild(line);
+    const txt = document.createElementNS('http://www.w3.org/2000/svg','text');
+    txt.setAttribute('x', PL + 2); txt.setAttribute('y', (parseFloat(gy) - 3).toFixed(1));
+    txt.setAttribute('fill', 'rgba(90,100,128,0.7)');
+    txt.setAttribute('font-family', 'JetBrains Mono'); txt.setAttribute('font-size', '8');
+    txt.textContent = `¥${price.toLocaleString()}`;
+    grid.appendChild(txt);
+  });
+
+  // 日付ラベル（最大5個）
+  const lblGroup = document.getElementById('dateLabels');
+  lblGroup.innerHTML = '';
+  const labelCount = Math.min(5, data.length);
+  for (let k = 0; k < labelCount; k++) {
+    const idx = Math.round(k / (labelCount - 1) * (data.length - 1));
+    const x = xOf(idx).toFixed(1);
+    const d = dates[idx] || '';
+    const short = d.slice(5).replace('/', '/');
+    const txt = document.createElementNS('http://www.w3.org/2000/svg','text');
+    txt.setAttribute('x', x); txt.setAttribute('y', H - 6);
+    txt.setAttribute('text-anchor', 'middle');
+    txt.setAttribute('fill', 'rgba(90,100,128,0.8)');
+    txt.setAttribute('font-family', 'JetBrains Mono'); txt.setAttribute('font-size', '9');
+    txt.textContent = short;
+    lblGroup.appendChild(txt);
+  }
+
+  // 現在値ドット
   const [lx, ly] = pts[pts.length - 1];
   document.getElementById('sparkDot').setAttribute('cx', lx.toFixed(1));
   document.getElementById('sparkDot').setAttribute('cy', ly.toFixed(1));
