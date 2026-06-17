@@ -1,743 +1,151 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>プラチナ価格相場 — 田中貴金属</title>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=JetBrains+Mono:wght@300;400;600;700&display=swap" rel="stylesheet">
-<style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --bg: #070B17; --surface: #0F1627; --card: #141C35; --border: rgba(255,255,255,0.07);
-    --pt-silver: #D8DCE8; --pt-light: #F0F2F8; --mid: #6B7FA3;
-    --accent: #4ECDC4; --accent-dim: rgba(78,205,196,0.14);
-    --warn: #F7B731; --warn-dim: rgba(247,183,49,0.14);
-    --red: #FF6B6B; --green: #4ECDC4; --text: #C8CDD8; --text-dim: #5A6480;
-  }
-  body { background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', sans-serif; min-height: 100vh; overflow-x: hidden; }
-  body::before {
-    content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
-    background:
-      radial-gradient(ellipse 70% 50% at 15% 5%, rgba(78,205,196,0.05) 0%, transparent 60%),
-      radial-gradient(ellipse 50% 60% at 85% 95%, rgba(108,127,163,0.05) 0%, transparent 60%);
-  }
-  .container { max-width: 480px; margin: 0 auto; padding: 0 16px 100px; position: relative; z-index: 1; }
+import requests
+from bs4 import BeautifulSoup
+import re
+import json
+from datetime import datetime
 
-  /* ── Header ── */
-  header { display: flex; align-items: center; justify-content: space-between; padding: 22px 0 18px; }
-  .logo { display: flex; flex-direction: column; gap: 2px; }
-  .logo-main {
-    font-family: 'Noto Sans JP', sans-serif;
-    font-weight: 900;
-    font-size: 26px;
-    letter-spacing: 3px;
-    background: linear-gradient(110deg, #ffffff 0%, #e0e4f0 30%, #4ECDC4 65%, #a0f0ec 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    line-height: 1.15;
-    text-shadow: none;
-    filter: drop-shadow(0 0 18px rgba(78,205,196,0.45));
-  }
-  .logo-sub { font-size: 10px; color: var(--text-dim); letter-spacing: 2px; font-family: 'JetBrains Mono', monospace; }
-  .logo-accent {
-    display: block;
-    height: 2px;
-    width: 100%;
-    margin-top: 5px;
-    background: linear-gradient(90deg, #4ECDC4 0%, rgba(78,205,196,0.3) 70%, transparent 100%);
-    border-radius: 2px;
-    box-shadow: 0 0 8px rgba(78,205,196,0.6);
-  }
-  .status-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
-  .status-row { display: flex; align-items: center; gap: 6px; }
-  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); animation: pulse-dot 2s ease-in-out infinite; flex-shrink: 0; }
-  @keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.8)} }
-  .status-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-dim); }
-  .source-badge { font-size: 9px; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.5px; }
+def fetch_tanaka_data():
+    url = "https://gold.tanaka.co.jp/commodity/souba/d-platinum.php"
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+    res = requests.get(url, headers=headers, timeout=15)
+    res.encoding = "utf-8"
+    soup = BeautifulSoup(res.text, "html.parser")
 
-  /* ── Tabs ── */
-  .price-tabs { display: flex; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 4px; margin-bottom: 14px; gap: 4px; }
-  .price-tab { flex: 1; padding: 9px 6px; border: none; border-radius: 9px; background: transparent; color: var(--text-dim); font-family: 'Noto Sans JP', sans-serif; font-size: 12px; cursor: pointer; transition: all .2s; }
-  .price-tab.active { background: var(--card); color: var(--pt-light); font-weight: 700; box-shadow: 0 1px 4px rgba(0,0,0,0.4); }
+    data = {"retail": None, "buy": None, "retailDiff": None, "buyDiff": None, "publishedAt": None, "history": []}
 
-  /* ── Hero ── */
-  .price-hero { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 26px 22px; margin-bottom: 14px; position: relative; overflow: hidden; }
-  .price-hero::before { content: 'Pt'; position: absolute; right: -8px; top: 50%; transform: translateY(-50%); font-family: 'JetBrains Mono', monospace; font-size: 110px; font-weight: 700; color: rgba(255,255,255,0.025); line-height: 1; pointer-events: none; user-select: none; }
-  .price-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 8px; font-family: 'JetBrains Mono', monospace; }
-  .price-main { display: flex; align-items: flex-end; gap: 6px; margin-bottom: 8px; }
-  .price-currency { font-family: 'JetBrains Mono', monospace; font-size: 17px; font-weight: 300; color: var(--mid); margin-bottom: 5px; }
-  .price-value { font-family: 'JetBrains Mono', monospace; font-size: 50px; font-weight: 700; color: var(--pt-light); line-height: 1; letter-spacing: -1px; }
-  .price-unit { font-size: 12px; color: var(--text-dim); margin-bottom: 6px; font-family: 'JetBrains Mono', monospace; }
-  .price-change { display: inline-flex; align-items: center; gap: 5px; font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 600; padding: 4px 10px; border-radius: 6px; }
-  .price-change.up   { color: var(--green); background: rgba(78,205,196,0.1); }
-  .price-change.up::before   { content: '▲'; font-size: 8px; }
-  .price-change.down { color: var(--red); background: rgba(255,107,107,0.1); }
-  .price-change.down::before { content: '▼'; font-size: 8px; }
-  .price-change.flat { color: var(--mid); background: rgba(107,127,163,0.1); }
-  .price-meta { display: flex; gap: 10px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
-  .meta-item { flex: 1; }
-  .meta-label { font-size: 9px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 4px; font-family: 'JetBrains Mono', monospace; }
-  .meta-value { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 600; color: var(--pt-silver); }
+    # 公表日時を取得
+    for tag in soup.find_all(["h3", "p", "div", "th", "td"]):
+        text = tag.get_text(strip=True)
+        m = re.search(r'(\d{4})年(\d{1,2})月(\d{1,2})日\s*(\d{2}:\d{2})公表', text)
+        if m:
+            data["publishedAt"] = f"{m.group(1)}/{int(m.group(2)):02d}/{int(m.group(3)):02d} {m.group(4)}"
+            break
 
-  /* ── Chart ── */
-  .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px 16px 12px; margin-bottom: 14px; }
-  .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-  .chart-title { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; }
-  .range-tabs { display: flex; gap: 2px; }
-  .range-tab { padding: 3px 9px; border: none; background: transparent; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; font-size: 10px; cursor: pointer; border-radius: 4px; transition: all .15s; }
-  .range-tab.active { background: var(--accent-dim); color: var(--accent); }
-  .chart-wrap { height: 200px; }
-  #sparkline { width: 100%; height: 100%; display: block; overflow: visible; }
+    # 現在の小売・買取価格と前日比を取得（最初のテーブルから）
+    tables = soup.find_all("table")
+    for table in tables:
+        rows = table.find_all("tr")
+        for row in rows:
+            cells = row.find_all(["td", "th"])
+            texts = [c.get_text(strip=True) for c in cells]
+            full = " ".join(texts)
+            
+            # 「店頭小売価格」を含む行
+            if "店頭小売価格" in full or "小売" in full:
+                prices = re.findall(r'([\d,]+)\s*円', full)
+                diffs = re.findall(r'([+\-−][\d,]+)\s*円', full)
+                if prices:
+                    p = int(prices[0].replace(",", ""))
+                    if 5000 < p < 50000 and data["retail"] is None:
+                        data["retail"] = p
+                if diffs and data["retailDiff"] is None:
+                    data["retailDiff"] = int(diffs[0].replace(",","").replace("−","-").replace("+",""))
 
-  /* ── Stats ── */
-  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
-  .info-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 15px; }
-  .info-card-label { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; margin-bottom: 7px; }
-  .info-card-value { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 700; color: var(--pt-silver); }
-  .info-card-sub { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+            if "店頭買取価格" in full or "買取" in full:
+                prices = re.findall(r'([\d,]+)\s*円', full)
+                diffs = re.findall(r'([+\-−][\d,]+)\s*円', full)
+                if prices:
+                    p = int(prices[0].replace(",", ""))
+                    if 5000 < p < 50000 and data["buy"] is None:
+                        data["buy"] = p
+                if diffs and data["buyDiff"] is None:
+                    data["buyDiff"] = int(diffs[0].replace(",","").replace("−","-").replace("+",""))
 
-  /* ── History ── */
-  .history-table { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; margin-bottom: 14px; }
-  .history-header { padding: 13px 17px; border-bottom: 1px solid var(--border); }
-  .history-title { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; }
-  .history-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 17px; border-bottom: 1px solid rgba(255,255,255,0.03); }
-  .history-row:last-child { border-bottom: none; }
-  .history-date { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-dim); }
-  .history-right { display: flex; gap: 12px; align-items: center; }
-  .history-retail { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 600; color: var(--pt-silver); }
-  .history-diff { font-family: 'JetBrains Mono', monospace; font-size: 11px; min-width: 52px; text-align: right; }
-  .history-diff.up { color: var(--green); }
-  .history-diff.down { color: var(--red); }
+    # 月次テーブルから過去データを取得
+    # 最大のテーブルを探す（月次データテーブル）
+    history_data = {}
+    for table in tables:
+        rows = table.find_all("tr")
+        if len(rows) < 10:
+            continue
+        
+        # ヘッダー行から年月を取得
+        header_row = rows[0]
+        headers_text = [th.get_text(strip=True) for th in header_row.find_all(["th","td"])]
+        
+        months = []
+        for h in headers_text:
+            m = re.search(r'(\d{4})年\s*(\d{1,2})月', h)
+            if m:
+                months.append((int(m.group(1)), int(m.group(2))))
+        
+        if not months:
+            continue
+        
+        # データ行から日付と価格を取得
+        for row in rows[1:]:
+            cells = row.find_all(["td","th"])
+            if not cells:
+                continue
+            
+            # 最初のセルが日付
+            day_text = cells[0].get_text(strip=True).replace("日","")
+            try:
+                day = int(day_text)
+            except:
+                continue
+            
+            # 残りのセルが各月の価格
+            for i, cell in enumerate(cells[1:]):
+                if i >= len(months):
+                    break
+                year, month = months[i]
+                price_text = cell.get_text(strip=True).replace(",","").replace("円","")
+                if price_text and price_text != "-" and price_text != "－":
+                    try:
+                        price = int(price_text)
+                        if 3000 < price < 100000:
+                            date_key = f"{year}/{month:02d}/{day:02d}"
+                            history_data[date_key] = price
+                    except:
+                        pass
+    
+    # 日付の新しい順にソート
+    sorted_dates = sorted(history_data.keys(), reverse=True)
+    data["history"] = [{"date": d, "retail": history_data[d], "buy": None} for d in sorted_dates[:60]]
+    
+    # 現在価格が取れていない場合は履歴の最新を使う
+    if data["retail"] is None and data["history"]:
+        data["retail"] = data["history"][0]["retail"]
+    if data["retailDiff"] is None:
+        data["retailDiff"] = 0
+    if data["buyDiff"] is None:
+        data["buyDiff"] = 0
+    if data["buy"] is None and data["retail"]:
+        data["buy"] = data["retail"] - 423  # スプレッド概算
+    if not data["publishedAt"]:
+        data["publishedAt"] = datetime.now().strftime("%Y/%m/%d 09:30")
 
-  /* ── Alert ── */
-  .section-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; margin-bottom: 10px; }
-  .alert-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px; margin-bottom: 14px; }
-  .alert-form { display: flex; flex-direction: column; gap: 10px; }
-  .alert-row { display: flex; gap: 10px; align-items: center; }
-  .alert-condition { display: flex; background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
-  .cond-btn { padding: 10px 12px; border: none; background: transparent; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; font-size: 12px; cursor: pointer; transition: all .15s; white-space: nowrap; }
-  .cond-btn.active { background: var(--accent-dim); color: var(--accent); }
-  .price-input-wrap { flex: 1; position: relative; }
-  .price-input-prefix { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--text-dim); pointer-events: none; }
-  .price-input { width: 100%; background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px 10px 30px; font-family: 'JetBrains Mono', monospace; font-size: 16px; color: var(--pt-light); outline: none; transition: border-color .2s; -webkit-appearance: none; }
-  .price-input:focus { border-color: var(--accent); }
-  .price-input::placeholder { color: var(--text-dim); }
-  .add-alert-btn { width: 100%; padding: 12px; border: none; border-radius: 10px; background: var(--accent); color: var(--bg); font-family: 'Noto Sans JP', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; transition: all .2s; }
-  .add-alert-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
-  .add-alert-btn:active { transform: translateY(0); }
-  .alerts-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
-  .alert-item { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 13px 15px; display: flex; align-items: center; justify-content: space-between; }
-  .alert-item.triggered { border-color: var(--warn); background: var(--warn-dim); animation: alert-pulse .8s ease-in-out 3; }
-  @keyframes alert-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(247,183,49,.3)} 50%{box-shadow:0 0 0 8px rgba(247,183,49,0)} }
-  .alert-info { display: flex; flex-direction: column; gap: 3px; }
-  .alert-cond-text { font-size: 11px; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; letter-spacing: 1px; }
-  .alert-price-text { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 600; color: var(--pt-light); }
-  .alert-badge { font-size: 10px; color: var(--warn); font-family: 'JetBrains Mono', monospace; background: rgba(247,183,49,0.15); padding: 3px 8px; border-radius: 4px; display: none; }
-  .alert-item.triggered .alert-badge { display: block; }
-  .delete-btn { background: transparent; border: none; color: var(--text-dim); cursor: pointer; font-size: 18px; padding: 4px 8px; border-radius: 6px; transition: all .15s; line-height: 1; }
-  .delete-btn:hover { color: var(--red); background: rgba(255,107,107,0.1); }
+    return data
 
-  /* ── Email notification card ── */
-  .email-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px; margin-bottom: 14px; }
-  .email-desc { font-size: 12px; color: var(--text-dim); margin-bottom: 12px; line-height: 1.6; }
-  .email-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
-  .email-register-btn { padding: 10px 18px; border: none; border-radius: 10px; background: var(--accent); color: var(--bg); font-family: 'Noto Sans JP', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; transition: all .2s; flex-shrink: 0; }
-  .email-register-btn:hover { filter: brightness(1.1); }
-  .email-note { font-size: 10px; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; }
-  .email-registered-title { font-size: 13px; font-weight: 700; color: var(--green); margin-bottom: 4px; }
-  .email-registered-addr { font-size: 12px; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; }
-  .email-cancel-btn { padding: 7px 14px; border: 1px solid rgba(255,107,107,0.3); border-radius: 8px; background: transparent; color: var(--red); font-family: 'Noto Sans JP', sans-serif; font-size: 12px; cursor: pointer; transition: all .2s; flex-shrink: 0; }
-  .email-cancel-btn:hover { background: rgba(255,107,107,0.1); }
-  .update-btn {
-    width: 100%; padding: 14px; border: none; border-radius: 14px; margin-bottom: 14px;
-    background: linear-gradient(135deg, #1a2a2a 0%, #0d2020 100%);
-    border: 1px solid rgba(78,205,196,0.35);
-    color: var(--accent); font-family: 'Noto Sans JP', sans-serif;
-    font-size: 14px; font-weight: 700; cursor: pointer;
-    display: flex; align-items: center; justify-content: center; gap: 10px;
-    transition: all .25s; letter-spacing: 1px;
-    box-shadow: 0 0 20px rgba(78,205,196,0.06);
-  }
-  .update-btn:hover { background: linear-gradient(135deg, #1e3232 0%, #112828 100%); border-color: rgba(78,205,196,0.6); box-shadow: 0 0 24px rgba(78,205,196,0.15); transform: translateY(-1px); }
-  .update-btn:active { transform: translateY(0); }
-  .update-icon { font-size: 18px; }
+def update_html(data):
+    with open("index.html", "r", encoding="utf-8") as f:
+        html = f.read()
 
-  /* ── Footer ── */
-  .footer-note { text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-dim); line-height: 2; }
-  .footer-note a { color: var(--accent); text-decoration: none; }
+    history_json = json.dumps(data["history"], ensure_ascii=False)
+    new_data_block = f"""const TANAKA_DATA = {{
+  retail: {data['retail'] or 0},
+  buy: {data['buy'] or 0},
+  retailDiff: {data['retailDiff'] or 0},
+  buyDiff: {data['buyDiff'] or 0},
+  publishedAt: "{data['publishedAt']}",
+  history: {history_json}
+}};"""
 
-  /* ── Toast ── */
-  .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-90px); background: var(--warn); color: #1A0E00; padding: 13px 20px; border-radius: 12px; font-family: 'Noto Sans JP', sans-serif; font-size: 14px; font-weight: 700; z-index: 1000; transition: transform .4s cubic-bezier(.175,.885,.32,1.275); box-shadow: 0 8px 30px rgba(247,183,49,.4); max-width: calc(100vw - 32px); text-align: center; }
-  .toast.show { transform: translateX(-50%) translateY(0); }
-  @keyframes spin { to { transform: rotate(360deg); } }
-</style>
-</head>
-<body>
-<div class="container">
+    pattern = r'const TANAKA_DATA = \{[\s\S]*?\};'
+    new_html = re.sub(pattern, new_data_block, html, count=1)
 
-  <header>
-    <div class="logo">
-      <div class="logo-main">プラチナ価格相場</div>
-      <div class="logo-sub">Pt 78 · 田中貴金属工業</div>
-      <span class="logo-accent"></span>
-    </div>
-    <div class="status-wrap">
-      <div class="status-row">
-        <span class="dot"></span>
-        <span class="status-label">2026/06/16</span>
-      </div>
-      <span class="source-badge">09:30 公表</span>
-    </div>
-  </header>
+    now_str = datetime.now().strftime("%Y年%m月%d日 %H:%M")
+    new_html = re.sub(r'最終取得: .+?\)', f'最終取得: {now_str} (自動更新)', new_html)
 
-  <!-- 小売 / 買取 タブ -->
-  <div class="price-tabs">
-    <button class="price-tab active" id="tab-retail" onclick="setPriceType('retail')">店頭小売価格</button>
-    <button class="price-tab" id="tab-buy" onclick="setPriceType('buy')">店頭買取価格</button>
-  </div>
+    with open("index.html", "w", encoding="utf-8") as f:
+        f.write(new_html)
 
-  <!-- Price hero -->
-  <div class="price-hero">
-    <div class="price-label" id="priceLabel">プラチナ 店頭小売価格（税込）</div>
-    <div class="price-main">
-      <span class="price-currency">¥</span>
-      <span class="price-value" id="priceDisplay">10,191</span>
-      <span class="price-unit">/ g</span>
-    </div>
-    <span class="price-change down" id="changeDisplay">前日比 -36 円</span>
-    <div class="price-meta">
-      <div class="meta-item">
-        <div class="meta-label">公表日時</div>
-        <div class="meta-value" id="publishedDate">2026/06/16</div>
-      </div>
-      <div class="meta-item">
-        <div class="meta-label">前日比</div>
-        <div class="meta-value" id="diffDisplay" style="color:var(--red)">-36 円</div>
-      </div>
-      <div class="meta-item">
-        <div class="meta-label">売買差額</div>
-        <div class="meta-value" id="spreadDisplay">423 円</div>
-      </div>
-    </div>
-  </div>
+    print(f"✅ 更新完了: 小売 ¥{data['retail']:,}/g, 買取 ¥{data['buy']:,}/g ({data['publishedAt']})")
+    print(f"   前日比: {data['retailDiff']:+d}円, 履歴件数: {len(data['history'])}件")
 
-  <!-- Chart -->
-  <div class="chart-card">
-    <div class="chart-header">
-      <span class="chart-title">価格推移チャート</span>
-      <div class="range-tabs">
-        <button class="range-tab active" id="rtab-1M" onclick="setRange('1M')">1ヶ月</button>
-        <button class="range-tab" id="rtab-3M" onclick="setRange('3M')">3ヶ月</button>
-        <button class="range-tab" id="rtab-ALL" onclick="setRange('ALL')">全期間</button>
-      </div>
-    </div>
-    <div class="chart-wrap">
-      <svg id="sparkline" viewBox="0 0 440 200" preserveAspectRatio="none">
-        <defs>
-          <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stop-color="#4ECDC4" stop-opacity="0.4"/>
-            <stop offset="100%" stop-color="#4ECDC4"/>
-          </linearGradient>
-          <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#4ECDC4" stop-opacity="0.2"/>
-            <stop offset="100%" stop-color="#4ECDC4" stop-opacity="0"/>
-          </linearGradient>
-          <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="3" result="b"/>
-            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-          </filter>
-        </defs>
-        <!-- グリッド線 -->
-        <g id="chartGrid"></g>
-        <!-- 最高値・最安値ライン -->
-        <line id="highLine" x1="0" y1="0" x2="440" y2="0" stroke="rgba(255,107,107,0.3)" stroke-width="1" stroke-dasharray="4,3"/>
-        <line id="lowLine" x1="0" y1="0" x2="440" y2="0" stroke="rgba(78,205,196,0.3)" stroke-width="1" stroke-dasharray="4,3"/>
-        <!-- 最高値・最安値ラベル -->
-        <text id="highLabel" x="436" y="0" text-anchor="end" fill="rgba(255,107,107,0.8)" font-family="JetBrains Mono" font-size="9"></text>
-        <text id="lowLabel" x="436" y="0" text-anchor="end" fill="rgba(78,205,196,0.8)" font-family="JetBrains Mono" font-size="9"></text>
-        <!-- エリアと線 -->
-        <path id="sparkArea" fill="url(#areaGrad)"/>
-        <path id="sparkLine" fill="none" stroke="url(#lineGrad)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-        <!-- 日付ラベル -->
-        <g id="dateLabels"></g>
-        <!-- 現在値ドット -->
-        <circle id="sparkDot" r="5" fill="#4ECDC4" filter="url(#glow)"/>
-      </svg>
-    </div>
-  </div>
-
-  <!-- Stats -->
-  <div class="two-col">
-    <div class="info-card">
-      <div class="info-card-label">期間内 最高値</div>
-      <div class="info-card-value" id="periodHigh">—</div>
-      <div class="info-card-sub" id="highSub">円/g</div>
-    </div>
-    <div class="info-card">
-      <div class="info-card-label">期間内 最安値</div>
-      <div class="info-card-value" id="periodLow">—</div>
-      <div class="info-card-sub" id="lowSub">円/g</div>
-    </div>
-  </div>
-
-  <!-- History table -->
-  <div class="history-table" id="historyTable"></div>
-
-  <!-- Alert -->
-  <div class="section-label" style="margin-top:6px;">価格アラート（円 / g）</div>
-  <div class="alert-card">
-    <div class="alert-form">
-      <div class="alert-row">
-        <div class="alert-condition">
-          <button class="cond-btn active" id="condAbove" onclick="setCond('above')">↑ 以上</button>
-          <button class="cond-btn" id="condBelow" onclick="setCond('below')">↓ 以下</button>
-        </div>
-        <div class="price-input-wrap">
-          <span class="price-input-prefix">¥</span>
-          <input type="number" class="price-input" id="alertInput" placeholder="10,000" inputmode="decimal">
-        </div>
-      </div>
-      <button class="add-alert-btn" onclick="addAlert()">＋ アラートを追加</button>
-    </div>
-  </div>
-
-  <div class="alerts-list" id="alertsList"></div>
-
-  <!-- メール通知登録 -->
-  <div class="section-label" style="margin-top:6px;">メール通知（毎朝9:30）</div>
-  <div class="email-card" id="emailCard">
-    <div id="emailSetup">
-      <div class="email-desc">アラート条件を満たしたとき、毎朝9:30にメールでお知らせします。</div>
-      <div class="email-row">
-        <div class="price-input-wrap">
-          <input type="email" class="price-input" id="emailInput" placeholder="your@gmail.com" inputmode="email" style="padding-left:14px;">
-        </div>
-        <button class="email-register-btn" onclick="registerEmail()">登録</button>
-      </div>
-      <div class="email-note">※ どのメールアドレスでも受け取れます</div>
-    </div>
-    <div id="emailRegistered" style="display:none;">
-      <div style="display:flex;align-items:center;justify-content:space-between;">
-        <div>
-          <div class="email-registered-title">✅ メール通知が有効です</div>
-          <div class="email-registered-addr" id="registeredAddr"></div>
-        </div>
-        <button class="email-cancel-btn" onclick="cancelEmail()">解除</button>
-      </div>
-    </div>
-  </div>
-
-  <p class="footer-note">
-    データ出典: <a href="https://gold.tanaka.co.jp/commodity/souba/d-platinum.php" target="_blank">田中貴金属工業</a>
-    ｜ 営業日 9:30 / 14:00 更新<br>
-    最終取得: 2026年06月16日 14:00確認 by Claude
-  </p>
-</div>
-
-<div class="toast" id="toast"></div>
-
-<script>
-// ── 田中貴金属 公式データ（2026/06/16 09:30 取得）──
-const TANAKA_DATA = {
-  retail: 10191, buy: 9768,
-  retailDiff: -36, buyDiff: -37,
-  publishedAt: "2026/06/16 09:30",
-  history: [
-    { date:"2026/06/16", retail:10191, buy:9768 },
-    { date:"2026/06/15", retail:10227, buy:9805 },
-    { date:"2026/06/12", retail:9964,  buy:9542 },
-    { date:"2026/06/11", retail:9606,  buy:9184 },
-    { date:"2026/06/10", retail:9909,  buy:9487 },
-    { date:"2026/06/09", retail:10094, buy:9672 },
-    { date:"2026/06/08", retail:10382, buy:9960 },
-    { date:"2026/06/05", retail:10852, buy:10430 },
-    { date:"2026/06/04", retail:10789, buy:10367 },
-    { date:"2026/06/03", retail:11115, buy:10693 },
-    { date:"2026/06/02", retail:11115, buy:10693 },
-    { date:"2026/06/01", retail:11110, buy:10688 },
-    { date:"2026/05/28", retail:11050, buy:10628 },
-    { date:"2026/05/27", retail:11245, buy:10823 },
-    { date:"2026/05/26", retail:11169, buy:10747 },
-    { date:"2026/05/25", retail:11209, buy:10787 },
-    { date:"2026/05/22", retail:11233, buy:10811 },
-    { date:"2026/05/21", retail:11123, buy:10701 },
-    { date:"2026/05/20", retail:11082, buy:10660 },
-    { date:"2026/05/19", retail:11355, buy:10933 },
-    { date:"2026/05/18", retail:11279, buy:10857 },
-    { date:"2026/05/15", retail:11727, buy:11305 },
-    { date:"2026/05/14", retail:12172, buy:11750 },
-    { date:"2026/05/13", retail:12008, buy:11586 },
-    { date:"2026/05/12", retail:12063, buy:11641 },
-    { date:"2026/05/11", retail:11473, buy:11051 },
-    { date:"2026/05/08", retail:11467, buy:11045 },
-    { date:"2026/05/07", retail:11640, buy:11218 },
-    { date:"2026/04/30", retail:10937, buy:10515 },
-    { date:"2026/04/28", retail:11513, buy:11091 },
-    { date:"2026/04/27", retail:11488, buy:11066 },
-    { date:"2026/04/25", retail:11599, buy:11177 },
-    { date:"2026/04/23", retail:11921, buy:11499 },
-    { date:"2026/04/22", retail:11771, buy:11349 },
-    { date:"2026/04/21", retail:11955, buy:11533 },
-    { date:"2026/04/20", retail:12029, buy:11607 },
-    { date:"2026/04/17", retail:12063, buy:11641 },
-    { date:"2026/04/16", retail:12217, buy:11795 },
-    { date:"2026/04/15", retail:12056, buy:11634 },
-    { date:"2026/04/14", retail:12018, buy:11596 },
-    { date:"2026/04/13", retail:11614, buy:11192 },
-    { date:"2026/04/10", retail:11938, buy:11516 },
-    { date:"2026/04/09", retail:11652, buy:11230 },
-    { date:"2026/04/08", retail:11587, buy:11165 },
-    { date:"2026/04/07", retail:11442, buy:11020 },
-    { date:"2026/04/06", retail:11376, buy:10954 },
-    { date:"2026/04/03", retail:11455, buy:11033 },
-    { date:"2026/04/02", retail:11255, buy:10833 },
-    { date:"2026/04/01", retail:11319, buy:10897 },
-    { date:"2026/03/31", retail:10883, buy:10461 },
-    { date:"2026/03/30", retail:10622, buy:10200 },
-    { date:"2026/03/27", retail:10476, buy:10054 },
-    { date:"2026/03/26", retail:11155, buy:10733 },
-    { date:"2026/03/25", retail:11184, buy:10762 },
-    { date:"2026/03/24", retail:10748, buy:10326 },
-    { date:"2026/03/23", retail:10908, buy:10486 },
-    { date:"2026/03/19", retail:11797, buy:11375 },
-    { date:"2026/03/18", retail:12184, buy:11762 },
-    { date:"2026/03/17", retail:12123, buy:11701 },
-    { date:"2026/03/16", retail:11731, buy:11309 },
-    { date:"2026/03/13", retail:12269, buy:11847 },
-    { date:"2026/03/12", retail:12392, buy:11970 },
-    { date:"2026/03/11", retail:12612, buy:12190 },
-    { date:"2026/03/10", retail:12284, buy:11862 },
-    { date:"2026/03/09", retail:11792, buy:11370 },
-    { date:"2026/03/06", retail:12149, buy:11727 },
-    { date:"2026/03/05", retail:12417, buy:11995 },
-    { date:"2026/03/04", retail:11908, buy:11486 },
-    { date:"2026/03/03", retail:13073, buy:12651 },
-    { date:"2026/03/02", retail:13420, buy:12998 }
-  ]
-};
-
-// ── State ──
-let priceType = 'retail';
-let currentRange = '1M';
-let alertCondition = 'above';
-let alerts = JSON.parse(localStorage.getItem('pt_alerts_v3') || '[]');
-let toastTimer = null;
-
-function renderAll() { updateHero(); drawChart(); renderHistory(); updateStats(); }
-
-// ── Hero ──
-function updateHero() {
-  const d = TANAKA_DATA;
-  const price = priceType === 'retail' ? d.retail : d.buy;
-  const diff  = priceType === 'retail' ? d.retailDiff : d.buyDiff;
-  document.getElementById('priceDisplay').textContent = price.toLocaleString();
-  document.getElementById('priceLabel').textContent =
-    `プラチナ ${priceType === 'retail' ? '店頭小売価格（税込）' : '店頭買取価格（税込）'}`;
-  document.getElementById('publishedDate').textContent = d.publishedAt;
-  const sign = diff >= 0 ? '+' : '';
-  const cls = diff > 0 ? 'up' : diff < 0 ? 'down' : 'flat';
-  const changeEl = document.getElementById('changeDisplay');
-  changeEl.textContent = `前日比 ${sign}${diff.toLocaleString()} 円`;
-  changeEl.className = `price-change ${cls}`;
-  const diffEl = document.getElementById('diffDisplay');
-  diffEl.textContent = `${sign}${diff.toLocaleString()} 円`;
-  diffEl.style.color = diff > 0 ? 'var(--green)' : diff < 0 ? 'var(--red)' : 'var(--mid)';
-  document.getElementById('spreadDisplay').textContent = `${(d.retail - d.buy).toLocaleString()} 円`;
-}
-
-// ── Chart ──
-function getChartData() {
-  const n = currentRange === '1M' ? 22 : currentRange === '3M' ? 66 : 9999;
-  return TANAKA_DATA.history.slice(0, n)
-    .map(h => priceType === 'retail' ? h.retail : h.buy)
-    .filter(Boolean).reverse();
-}
-function drawChart() {
-  const data = getChartData();
-  const dates = (() => {
-    const n = currentRange === '1M' ? 22 : currentRange === '3M' ? 66 : 9999;
-    return TANAKA_DATA.history.slice(0, n)
-      .filter(h => priceType === 'retail' ? h.retail : h.buy)
-      .map(h => h.date).reverse();
-  })();
-  if (data.length < 2) return;
-
-  const W = 440, H = 200, PT = 20, PB = 28, PL = 4, PR = 4;
-  const chartH = H - PT - PB;
-  const mn = Math.min(...data), mx = Math.max(...data);
-  const pad = (mx - mn) * 0.08 || 100;
-  const minV = mn - pad, maxV = mx + pad;
-
-  const xOf = i => PL + (i / (data.length - 1)) * (W - PL - PR);
-  const yOf = v => PT + chartH - ((v - minV) / (maxV - minV)) * chartH;
-
-  const pts = data.map((v, i) => [xOf(i), yOf(v)]);
-  const line = pts.map(([x,y],i) => `${i?'L':'M'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
-  document.getElementById('sparkLine').setAttribute('d', line);
-  document.getElementById('sparkArea').setAttribute('d', `${line} L${W-PR},${PT+chartH} L${PL},${PT+chartH} Z`);
-
-  // 最高値・最安値ライン
-  const hiIdx = data.indexOf(mx);
-  const loIdx = data.indexOf(mn);
-  const hiY = yOf(mx).toFixed(1);
-  const loY = yOf(mn).toFixed(1);
-  document.getElementById('highLine').setAttribute('y1', hiY);
-  document.getElementById('highLine').setAttribute('y2', hiY);
-  document.getElementById('lowLine').setAttribute('y1', loY);
-  document.getElementById('lowLine').setAttribute('y2', loY);
-  document.getElementById('highLabel').setAttribute('y', (parseFloat(hiY) - 3).toFixed(1));
-  document.getElementById('highLabel').textContent = `最高 ¥${mx.toLocaleString()}`;
-  document.getElementById('lowLabel').setAttribute('y', (parseFloat(loY) + 10).toFixed(1));
-  document.getElementById('lowLabel').textContent = `最安 ¥${mn.toLocaleString()}`;
-
-  // グリッド線（横3本）
-  const grid = document.getElementById('chartGrid');
-  grid.innerHTML = '';
-  [0.25, 0.5, 0.75].forEach(r => {
-    const gy = (PT + chartH * (1 - r)).toFixed(1);
-    const price = Math.round(minV + (maxV - minV) * r);
-    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
-    line.setAttribute('x1', PL); line.setAttribute('x2', W - PR);
-    line.setAttribute('y1', gy); line.setAttribute('y2', gy);
-    line.setAttribute('stroke', 'rgba(255,255,255,0.05)');
-    line.setAttribute('stroke-width', '1');
-    grid.appendChild(line);
-    const txt = document.createElementNS('http://www.w3.org/2000/svg','text');
-    txt.setAttribute('x', PL + 2); txt.setAttribute('y', (parseFloat(gy) - 3).toFixed(1));
-    txt.setAttribute('fill', 'rgba(90,100,128,0.7)');
-    txt.setAttribute('font-family', 'JetBrains Mono'); txt.setAttribute('font-size', '8');
-    txt.textContent = `¥${price.toLocaleString()}`;
-    grid.appendChild(txt);
-  });
-
-  // 日付ラベル（最大5個）
-  const lblGroup = document.getElementById('dateLabels');
-  lblGroup.innerHTML = '';
-  const labelCount = Math.min(5, data.length);
-  for (let k = 0; k < labelCount; k++) {
-    const idx = Math.round(k / (labelCount - 1) * (data.length - 1));
-    const x = xOf(idx).toFixed(1);
-    const d = dates[idx] || '';
-    const short = d.slice(5).replace('/', '/');
-    const txt = document.createElementNS('http://www.w3.org/2000/svg','text');
-    txt.setAttribute('x', x); txt.setAttribute('y', H - 6);
-    txt.setAttribute('text-anchor', 'middle');
-    txt.setAttribute('fill', 'rgba(90,100,128,0.8)');
-    txt.setAttribute('font-family', 'JetBrains Mono'); txt.setAttribute('font-size', '9');
-    txt.textContent = short;
-    lblGroup.appendChild(txt);
-  }
-
-  // 現在値ドット
-  const [lx, ly] = pts[pts.length - 1];
-  document.getElementById('sparkDot').setAttribute('cx', lx.toFixed(1));
-  document.getElementById('sparkDot').setAttribute('cy', ly.toFixed(1));
-}
-
-// ── Stats ──
-function updateStats() {
-  const n = currentRange === '1M' ? 22 : currentRange === '3M' ? 66 : 9999;
-  const prices = TANAKA_DATA.history.slice(0, n).map(h => h.retail).filter(Boolean);
-  if (!prices.length) return;
-  document.getElementById('periodHigh').textContent = Math.max(...prices).toLocaleString();
-  document.getElementById('periodLow').textContent  = Math.min(...prices).toLocaleString();
-  const lbl = currentRange === '1M' ? '過去1ヶ月' : currentRange === '3M' ? '過去3ヶ月' : '全期間';
-  document.getElementById('highSub').textContent = `円/g（${lbl}）`;
-  document.getElementById('lowSub').textContent  = `円/g（${lbl}）`;
-}
-
-// ── History ──
-function renderHistory() {
-  const recent = TANAKA_DATA.history.slice(0, 12);
-  let html = `<div class="history-header"><span class="history-title">直近の価格履歴（小売）</span></div>`;
-  recent.forEach((row, i) => {
-    const prev = recent[i + 1];
-    let diffHtml = '';
-    if (prev?.retail && row.retail) {
-      const d = row.retail - prev.retail;
-      diffHtml = `<span class="history-diff ${d>=0?'up':'down'}">${d>=0?'+':''}${d.toLocaleString()}</span>`;
-    }
-    html += `<div class="history-row">
-      <span class="history-date">${row.date}</span>
-      <div class="history-right"><span class="history-retail">¥${row.retail.toLocaleString()}</span>${diffHtml}</div>
-    </div>`;
-  });
-  document.getElementById('historyTable').innerHTML = html;
-}
-
-// ── UI controls ──
-function setPriceType(t) {
-  priceType = t;
-  document.getElementById('tab-retail').classList.toggle('active', t === 'retail');
-  document.getElementById('tab-buy').classList.toggle('active', t === 'buy');
-  renderAll();
-}
-function setRange(r) {
-  currentRange = r;
-  ['1M','3M','ALL'].forEach(x => document.getElementById(`rtab-${x}`).classList.toggle('active', x === r));
-  drawChart(); updateStats();
-}
-function setCond(c) {
-  alertCondition = c;
-  document.getElementById('condAbove').classList.toggle('active', c === 'above');
-  document.getElementById('condBelow').classList.toggle('active', c === 'below');
-}
-
-// ── Alerts ──
-function addAlert() {
-  const input = document.getElementById('alertInput');
-  const val = parseFloat(input.value);
-  if (!val || val <= 0) { input.style.borderColor='var(--red)'; setTimeout(()=>input.style.borderColor='',800); return; }
-  alerts.push({ id: Date.now(), condition: alertCondition, price: val, triggered: false });
-  saveAlerts(); renderAlerts(); input.value = '';
-  showToast('アラートを設定しました 🔔');
-  checkAlerts();
-}
-function deleteAlert(id) { alerts = alerts.filter(a => a.id !== id); saveAlerts(); renderAlerts(); }
-function checkAlerts() {
-  const gram = TANAKA_DATA.retail;
-  alerts.forEach(a => {
-    if (a.triggered) return;
-    const hit = (a.condition==='above' && gram>=a.price) || (a.condition==='below' && gram<=a.price);
-    if (hit) {
-      a.triggered = true; saveAlerts();
-      const condText = a.condition==='above' ? `¥${a.price.toLocaleString()}以上` : `¥${a.price.toLocaleString()}以下`;
-      const msg = `プラチナが${condText}になりました！現在 ¥${gram.toLocaleString()}/g`;
-      showToast('🔔 ' + msg);
-      sendEmailNotification(msg, condText);
-    }
-  });
-}
-
-// ── EmailJS メール通知 ──
-const EJS = {
-  serviceId:  'service_73bbxkx',
-  templateId: 'template_2rfsztm',
-  publicKey:  '9gfJWAFzLmUGiCG0U'
-};
-
-function loadEmailJS() {
-  return new Promise((resolve, reject) => {
-    if (window.emailjs) { resolve(); return; }
-    const s = document.createElement('script');
-    s.src = 'https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js';
-    s.onload = () => { emailjs.init(EJS.publicKey); resolve(); };
-    s.onerror = reject;
-    document.head.appendChild(s);
-  });
-}
-
-async function sendEmailNotification(message, condition) {
-  const addr = localStorage.getItem('pt_email');
-  if (!addr) return;
-  try {
-    await loadEmailJS();
-    await emailjs.send(EJS.serviceId, EJS.templateId, {
-      to_email:        addr,
-      alert_message:   message,
-      alert_condition: condition,
-      current_price:   TANAKA_DATA.retail.toLocaleString(),
-      published_at:    TANAKA_DATA.publishedAt
-    });
-    showToast('📧 メールを送信しました！');
-  } catch(e) {
-    console.error('EmailJS error:', e);
-  }
-}
-
-// ── メール登録UI ──
-function registerEmail() {
-  const input = document.getElementById('emailInput');
-  const addr = input.value.trim();
-  if (!addr || !addr.includes('@')) {
-    input.style.borderColor = 'var(--red)';
-    setTimeout(() => input.style.borderColor = '', 800);
-    showToast('正しいメールアドレスを入力してください');
-    return;
-  }
-  localStorage.setItem('pt_email', addr);
-  showEmailRegistered(addr);
-  showToast('📧 メール通知を登録しました！');
-  scheduleDaily930Check();
-}
-
-function cancelEmail() {
-  localStorage.removeItem('pt_email');
-  document.getElementById('emailSetup').style.display = 'block';
-  document.getElementById('emailRegistered').style.display = 'none';
-  document.getElementById('emailInput').value = '';
-  showToast('メール通知を解除しました');
-}
-
-function showEmailRegistered(addr) {
-  document.getElementById('emailSetup').style.display = 'none';
-  document.getElementById('emailRegistered').style.display = 'block';
-  document.getElementById('registeredAddr').textContent = addr;
-}
-
-// ── 毎朝9:30チェックスケジューラー ──
-function scheduleDaily930Check() {
-  if (window._pt930Timer) return;
-  function msUntilNext930() {
-    const now = new Date(), next = new Date(now);
-    next.setHours(9, 30, 0, 0);
-    if (now >= next) next.setDate(next.getDate() + 1);
-    return next - now;
-  }
-  async function doCheck() {
-    const day = new Date().getDay();
-    if (day !== 0 && day !== 6) {
-      const addr = localStorage.getItem('pt_email');
-      if (addr) {
-        // 毎朝の価格通知
-        await sendEmailNotification(
-          `本日のプラチナ小売価格：¥${TANAKA_DATA.retail.toLocaleString()}/g（前日比 ${TANAKA_DATA.retailDiff >= 0 ? '+' : ''}${TANAKA_DATA.retailDiff}円）`,
-          '毎朝9:30定時通知'
-        );
-      }
-      checkAlerts();
-    }
-    window._pt930Timer = setTimeout(doCheck, msUntilNext930());
-  }
-  window._pt930Timer = setTimeout(doCheck, msUntilNext930());
-}
-
-function renderAlerts() {
-  const list = document.getElementById('alertsList');
-  if (!alerts.length) { list.innerHTML=''; return; }
-  list.innerHTML = alerts.map(a => `
-    <div class="alert-item ${a.triggered?'triggered':''}">
-      <div class="alert-info">
-        <div class="alert-cond-text">${a.condition==='above'?'↑ 以上になったら':'↓ 以下になったら'}</div>
-        <div class="alert-price-text">¥ ${a.price.toLocaleString()}<small style="font-size:11px;color:var(--text-dim)"> / g</small></div>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px;">
-        <span class="alert-badge">HIT!</span>
-        <button class="delete-btn" onclick="deleteAlert(${a.id})">×</button>
-      </div>
-    </div>`).join('');
-}
-function showToast(msg) {
-  const el = document.getElementById('toast');
-  el.textContent = msg; el.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('show'), 4500);
-}
-function saveAlerts() { localStorage.setItem('pt_alerts_v3', JSON.stringify(alerts)); }
-
-// ── Init ──
-function init() {
-  renderAll(); checkAlerts(); renderAlerts();
-  // 登録済みメールアドレスがあれば表示
-  const saved = localStorage.getItem('pt_email');
-  if (saved) {
-    showEmailRegistered(saved);
-    scheduleDaily930Check();
-  }
-}
-
-init();
-</script>
-</body>
-</html>
+if __name__ == "__main__":
+    print("田中貴金属 プラチナ価格を取得中...")
+    data = fetch_tanaka_data()
+    print(f"取得データ: 小売={data['retail']}, 買取={data['buy']}, 前日比={data['retailDiff']}, 公表={data['publishedAt']}")
+    update_html(data)
