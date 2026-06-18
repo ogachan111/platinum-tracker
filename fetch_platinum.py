@@ -13,7 +13,6 @@ def fetch_tanaka_data():
 
     data = {"retail": None, "buy": None, "retailDiff": None, "buyDiff": None, "publishedAt": None, "history": []}
 
-    # 公表日時を取得
     for tag in soup.find_all(["h3", "p", "div", "th", "td"]):
         text = tag.get_text(strip=True)
         m = re.search(r'(\d{4})年(\d{1,2})月(\d{1,2})日\s*(\d{2}:\d{2})公表', text)
@@ -21,7 +20,6 @@ def fetch_tanaka_data():
             data["publishedAt"] = f"{m.group(1)}/{int(m.group(2)):02d}/{int(m.group(3)):02d} {m.group(4)}"
             break
 
-    # 現在の小売・買取価格と前日比を取得（最初のテーブルから）
     tables = soup.find_all("table")
     for table in tables:
         rows = table.find_all("tr")
@@ -29,8 +27,7 @@ def fetch_tanaka_data():
             cells = row.find_all(["td", "th"])
             texts = [c.get_text(strip=True) for c in cells]
             full = " ".join(texts)
-            
-            # 「店頭小売価格」を含む行
+
             if "店頭小売価格" in full or "小売" in full:
                 prices = re.findall(r'([\d,]+)\s*円', full)
                 diffs = re.findall(r'([+\-−][\d,]+)\s*円', full)
@@ -51,41 +48,35 @@ def fetch_tanaka_data():
                 if diffs and data["buyDiff"] is None:
                     data["buyDiff"] = int(diffs[0].replace(",","").replace("−","-").replace("+",""))
 
-    # 月次テーブルから過去データを取得
-    # 最大のテーブルを探す（月次データテーブル）
     history_data = {}
     for table in tables:
         rows = table.find_all("tr")
         if len(rows) < 10:
             continue
-        
-        # ヘッダー行から年月を取得
+
         header_row = rows[0]
         headers_text = [th.get_text(strip=True) for th in header_row.find_all(["th","td"])]
-        
+
         months = []
         for h in headers_text:
             m = re.search(r'(\d{4})年\s*(\d{1,2})月', h)
             if m:
                 months.append((int(m.group(1)), int(m.group(2))))
-        
+
         if not months:
             continue
-        
-        # データ行から日付と価格を取得
+
         for row in rows[1:]:
             cells = row.find_all(["td","th"])
             if not cells:
                 continue
-            
-            # 最初のセルが日付
+
             day_text = cells[0].get_text(strip=True).replace("日","")
             try:
                 day = int(day_text)
             except:
                 continue
-            
-            # 残りのセルが各月の価格
+
             for i, cell in enumerate(cells[1:]):
                 if i >= len(months):
                     break
@@ -99,12 +90,10 @@ def fetch_tanaka_data():
                             history_data[date_key] = price
                     except:
                         pass
-    
-    # 日付の新しい順にソート
+
     sorted_dates = sorted(history_data.keys(), reverse=True)
     data["history"] = [{"date": d, "retail": history_data[d], "buy": None} for d in sorted_dates[:60]]
-    
-    # 現在価格が取れていない場合は履歴の最新を使う
+
     if data["retail"] is None and data["history"]:
         data["retail"] = data["history"][0]["retail"]
     if data["retailDiff"] is None:
@@ -112,7 +101,7 @@ def fetch_tanaka_data():
     if data["buyDiff"] is None:
         data["buyDiff"] = 0
     if data["buy"] is None and data["retail"]:
-        data["buy"] = data["retail"] - 423  # スプレッド概算
+        data["buy"] = data["retail"] - 423
     if not data["publishedAt"]:
         data["publishedAt"] = datetime.now().strftime("%Y/%m/%d 09:30")
 
@@ -132,11 +121,14 @@ def update_html(data):
   history: {history_json}
 }};"""
 
-    pattern = r'const TANAKA_DATA = \{[\s\S]*?\};'
+    pattern = r'const TANAKA_DATA = \{{[\s\S]*?\}};'
     new_html = re.sub(pattern, new_data_block, html, count=1)
 
     now_str = datetime.now().strftime("%Y年%m月%d日 %H:%M")
     new_html = re.sub(r'最終取得: .+?\)', f'最終取得: {now_str} (自動更新)', new_html)
+
+    pub_date = data['publishedAt'][:10] if data['publishedAt'] else now_str[:10]
+    new_html = re.sub(r'<span class="status-label">[^<]*</span>', f'<span class="status-label">{pub_date}</span>', new_html)
 
     with open("index.html", "w", encoding="utf-8") as f:
         f.write(new_html)
