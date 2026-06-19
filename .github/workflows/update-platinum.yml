@@ -2,8 +2,8 @@ name: プラチナ価格 自動更新
 
 on:
   schedule:
-    # 毎営業日 09:30 JST (00:30 UTC)
-    - cron: '30 0 * * 1-5'
+    # 毎営業日 09:45 JST (00:45 UTC)
+    - cron: '45 0 * * 1-5'
     # 毎営業日 14:00 JST (05:00 UTC)
     - cron: '0 5 * * 1-5'
   workflow_dispatch:  # 手動実行ボタンも使えるようにする
