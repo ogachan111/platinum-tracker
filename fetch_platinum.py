@@ -13,14 +13,21 @@ def fetch_tanaka_data():
 
     data = {"retail": None, "buy": None, "retailDiff": None, "buyDiff": None, "publishedAt": None, "history": []}
 
-    for tag in soup.find_all(["h3", "p", "div", "th", "td"]):
-        text = tag.get_text(strip=True)
-        m = re.search(r'(\d{4})年(\d{1,2})月(\d{1,2})日\s*(\d{2}:\d{2})公表', text)
-        if m:
-            data["publishedAt"] = f"{m.group(1)}/{int(m.group(2)):02d}/{int(m.group(3)):02d} {m.group(4)}"
-            break
+    # ── 公表日時の取得（修正版）──
+    # サイトの形式: "地金価格2026年06月19日 09:30公表(日本時間)"
+    full_text = soup.get_text()
+    m = re.search(r'(\d{4})年(\d{1,2})月(\d{1,2})日\s*(\d{2}:\d{2})公表', full_text)
+    if m:
+        data["publishedAt"] = f"{m.group(1)}/{int(m.group(2)):02d}/{int(m.group(3)):02d} {m.group(4)}"
+        print(f"✅ 公表日時取得: {data['publishedAt']}")
+    else:
+        # フォールバック: 実行日の09:30を使用
+        data["publishedAt"] = datetime.now().strftime("%Y/%m/%d") + " 09:30"
+        print(f"⚠️ 公表日時が取得できなかったためフォールバック: {data['publishedAt']}")
 
     tables = soup.find_all("table")
+
+    # ── 本日の小売・買取価格と前日比を取得 ──
     for table in tables:
         rows = table.find_all("tr")
         for row in rows:
@@ -48,6 +55,7 @@ def fetch_tanaka_data():
                 if diffs and data["buyDiff"] is None:
                     data["buyDiff"] = int(diffs[0].replace(",","").replace("−","-").replace("+",""))
 
+    # ── 履歴データを取得 ──
     history_data = {}
     for table in tables:
         rows = table.find_all("tr")
@@ -56,7 +64,6 @@ def fetch_tanaka_data():
 
         header_row = rows[0]
         headers_text = [th.get_text(strip=True) for th in header_row.find_all(["th","td"])]
-
         months = []
         for h in headers_text:
             m = re.search(r'(\d{4})年\s*(\d{1,2})月', h)
@@ -70,7 +77,6 @@ def fetch_tanaka_data():
             cells = row.find_all(["td","th"])
             if not cells:
                 continue
-
             day_text = cells[0].get_text(strip=True).replace("日","")
             try:
                 day = int(day_text)
@@ -94,6 +100,7 @@ def fetch_tanaka_data():
     sorted_dates = sorted(history_data.keys(), reverse=True)
     data["history"] = [{"date": d, "retail": history_data[d], "buy": None} for d in sorted_dates[:60]]
 
+    # ── フォールバック処理 ──
     if data["retail"] is None and data["history"]:
         data["retail"] = data["history"][0]["retail"]
     if data["retailDiff"] is None:
@@ -102,8 +109,6 @@ def fetch_tanaka_data():
         data["buyDiff"] = 0
     if data["buy"] is None and data["retail"]:
         data["buy"] = data["retail"] - 423
-    if not data["publishedAt"]:
-        data["publishedAt"] = datetime.now().strftime("%Y/%m/%d 09:30")
 
     return data
 
@@ -112,6 +117,7 @@ def update_html(data):
         html = f.read()
 
     history_json = json.dumps(data["history"], ensure_ascii=False)
+
     new_data_block = f"""const TANAKA_DATA = {{
   retail: {data['retail'] or 0},
   buy: {data['buy'] or 0},
@@ -121,7 +127,7 @@ def update_html(data):
   history: {history_json}
 }};"""
 
-    pattern = r'const TANAKA_DATA = \{{[\s\S]*?\}};'
+    pattern = r'const TANAKA_DATA = \{[\s\S]*?\};'
     new_html = re.sub(pattern, new_data_block, html, count=1)
 
     now_str = datetime.now().strftime("%Y年%m月%d日 %H:%M")
