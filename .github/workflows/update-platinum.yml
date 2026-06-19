@@ -2,8 +2,8 @@ name: platinum-update
 
 on:
   schedule:
-    - cron: '30 0 * * 1-5'
-    - cron: '0 5 * * 1-5'
+    - cron: '0 23 * * 0-4'
+    - cron: '30 1 * * 0-4'
   workflow_dispatch:
 
 jobs:
