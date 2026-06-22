@@ -97,18 +97,24 @@ def fetch_tanaka_data():
                     except:
                         pass
 
-    sorted_dates = sorted(history_data.keys(), reverse=True)
-    data["history"] = [{"date": d, "retail": history_data[d], "buy": None} for d in sorted_dates[:60]]
+    sorted_dates = sorted(history_data.keys(), reverse=True)[:60]
 
-    # ── フォールバック処理 ──
-    if data["retail"] is None and data["history"]:
-        data["retail"] = data["history"][0]["retail"]
+    # ── フォールバック処理（履歴の買取値を埋める前に当日値を確定）──
+    if data["retail"] is None and sorted_dates:
+        data["retail"] = history_data[sorted_dates[0]]
     if data["retailDiff"] is None:
         data["retailDiff"] = 0
     if data["buyDiff"] is None:
         data["buyDiff"] = 0
     if data["buy"] is None and data["retail"]:
         data["buy"] = data["retail"] - 423
+
+    # ── 売買差額（当日の小売-買取）。買取の履歴はサイトに無いため差額から推定 ──
+    spread = (data["retail"] - data["buy"]) if (data["retail"] and data["buy"]) else 423
+    data["history"] = [
+        {"date": d, "retail": history_data[d], "buy": history_data[d] - spread}
+        for d in sorted_dates
+    ]
 
     return data
 
@@ -131,7 +137,8 @@ def update_html(data):
     new_html = re.sub(pattern, new_data_block, html, count=1)
 
     now_str = datetime.now().strftime("%Y年%m月%d日 %H:%M")
-    new_html = re.sub(r'最終取得: .+?\)', f'最終取得: {now_str} (自動更新)', new_html)
+    # フッターの「最終取得: …」を次のタグ直前まで置換（カッコの有無に関わらず一致）
+    new_html = re.sub(r'最終取得:[^<]*', f'最終取得: {now_str} （自動更新）', new_html)
 
     pub_date = data['publishedAt'][:10] if data['publishedAt'] else now_str[:10]
     new_html = re.sub(r'<span class="status-label">[^<]*</span>', f'<span class="status-label">{pub_date}</span>', new_html)
