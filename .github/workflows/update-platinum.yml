@@ -1,12 +1,7 @@
 name: プラチナ価格 自動更新
 
 on:
-  schedule:
-    # 毎営業日 09:45 JST (00:45 UTC)
-    - cron: '45 0 * * 1-5'
-    # 毎営業日 14:00 JST (05:00 UTC)
-    - cron: '0 5 * * 1-5'
-  workflow_dispatch:  # 手動実行ボタンも使えるようにする
+  workflow_dispatch:  # 手動実行ボタン / cron-job.org からの定時トリガー用
 
 permissions:
   contents: write
@@ -36,7 +31,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add index.html
+          git add data.json
           git diff --staged --quiet || git commit -m "🤖 価格自動更新: $(date '+%Y/%m/%d %H:%M') JST"
           git push
 
