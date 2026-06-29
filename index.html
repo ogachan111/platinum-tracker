@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
@@ -191,6 +191,9 @@
     </div>
   </header>
 
+  <!-- データ取得失敗時の警告バナー（通常は非表示） -->
+  <div id="staleBanner" style="display:none; background:var(--warn-dim); border:1px solid var(--warn); color:var(--warn); border-radius:12px; padding:10px 14px; margin-bottom:12px; font-size:12px; line-height:1.6;"></div>
+
   <!-- 小売 / 買取 タブ -->
   <div class="price-tabs">
     <button class="price-tab active" id="tab-retail" onclick="setPriceType('retail')">店頭小売価格</button>
@@ -267,6 +270,9 @@
     </div>
   </div>
 
+  <!-- 買取の過去推移が推定を含む場合の注記（買取タブ時のみ表示） -->
+  <div id="buyEstNote" style="display:none; font-size:10px; color:var(--text-dim); font-family:'JetBrains Mono',monospace; margin:-4px 0 14px; line-height:1.6;">※ 買取の過去推移は売買差額からの推定を含みます（記録開始日以降は実値）</div>
+
   <!-- Stats -->
   <div class="two-col">
     <div class="info-card">
@@ -331,14 +337,16 @@
   <p class="footer-note">
     データ出典: <a href="https://gold.tanaka.co.jp/commodity/souba/d-platinum.php" target="_blank">田中貴金属工業</a>
     ｜ 営業日 9:30 / 14:00 更新<br>
-    最終取得: 2026年06月29日 00:40 （自動更新）</p>
+    最終取得: <span id="lastFetch">—</span></p>
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script>
-// ── 田中貴金属 公式データ（2026/06/17 09:30 取得）──
-const TANAKA_DATA = {
+// ── 田中貴金属 公式データ（フォールバック用の内蔵初期値）──
+//    実データは下の loadData() が data.json から読み込んで上書きします。
+//    data.json の取得に失敗した場合のみ、この内蔵値が表示されます。
+let TANAKA_DATA = {
   retail: 9416,
   buy: 8993,
   retailDiff: 58,
@@ -354,7 +362,62 @@ let alertCondition = 'above';
 let alerts = JSON.parse(localStorage.getItem('pt_alerts_v3') || '[]');
 let toastTimer = null;
 
-function renderAll() { updateHero(); drawChart(); renderHistory(); updateStats(); }
+function renderAll() { updateHero(); drawChart(); renderHistory(); updateStats(); updateBuyNote(); }
+
+// ── 買取タブで推定値を含むときだけ注記を出す ──
+function updateBuyNote() {
+  const note = document.getElementById('buyEstNote');
+  if (!note) return;
+  const hasEst = priceType === 'buy'
+    && Array.isArray(TANAKA_DATA.history)
+    && TANAKA_DATA.history.some(h => h.buyEstimated);
+  note.style.display = hasEst ? 'block' : 'none';
+}
+
+// ── data.json を読み込んで表示を更新（失敗時は内蔵データのまま）──
+async function loadData() {
+  try {
+    const res = await fetch('data.json?t=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const d = await res.json();
+    if (d && typeof d.retail === 'number' && d.retail > 0) {
+      TANAKA_DATA = {
+        retail: d.retail, buy: d.buy,
+        retailDiff: d.retailDiff, buyDiff: d.buyDiff,
+        publishedAt: d.publishedAt, history: Array.isArray(d.history) ? d.history : []
+      };
+    }
+    applyMeta(d);
+  } catch (e) {
+    console.warn('data.json の読み込みに失敗。内蔵データで表示します。', e);
+  }
+  renderAll();
+  checkAlerts();
+}
+
+// ── ヘッダー・フッター・警告バナーを data.json の内容に合わせる ──
+function applyMeta(d) {
+  if (d && d.publishedAt) {
+    const datePart = String(d.publishedAt).slice(0, 10);
+    const timePart = String(d.publishedAt).slice(11);
+    const sl = document.querySelector('.status-label');
+    if (sl) sl.textContent = datePart;
+    const sb = document.querySelector('.source-badge');
+    if (sb && timePart) sb.textContent = timePart + ' 公表';
+  }
+  const lf = document.getElementById('lastFetch');
+  if (lf) lf.textContent = (d && d.lastChecked) ? d.lastChecked + ' （自動更新）' : '—';
+
+  const banner = document.getElementById('staleBanner');
+  if (banner) {
+    if (d && d.status === 'error') {
+      banner.style.display = 'block';
+      banner.textContent = '⚠️ 最新データの取得に失敗しています。表示は前回取得分です（最終確認: ' + (d.lastChecked || '不明') + '）';
+    } else {
+      banner.style.display = 'none';
+    }
+  }
+}
 
 // ── 価格取得ヘルパー（買取履歴が無い場合は売買差額から推定）──
 const PT_SPREAD = (TANAKA_DATA.retail && TANAKA_DATA.buy)
@@ -675,7 +738,9 @@ function saveAlerts() { localStorage.setItem('pt_alerts_v3', JSON.stringify(aler
 
 // ── Init ──
 function init() {
-  renderAll(); checkAlerts(); renderAlerts();
+  renderAll();          // まず内蔵データで即描画（白画面を避ける）
+  renderAlerts();
+  loadData();           // data.json を読み込んで上書き → 再描画・アラート判定
   // 登録済みメールアドレスがあれば表示
   const saved = localStorage.getItem('pt_email');
   if (saved) {
@@ -688,3 +753,4 @@ init();
 </script>
 </body>
 </html>
+

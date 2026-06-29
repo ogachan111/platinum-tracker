@@ -2,7 +2,10 @@ import requests
 from bs4 import BeautifulSoup
 import re
 import json
+import os
 from datetime import datetime
+
+DATA_FILE = "data.json"
 
 def fetch_tanaka_data():
     url = "https://gold.tanaka.co.jp/commodity/souba/d-platinum.php"
@@ -13,7 +16,7 @@ def fetch_tanaka_data():
 
     data = {"retail": None, "buy": None, "retailDiff": None, "buyDiff": None, "publishedAt": None, "history": []}
 
-    # ── 公表日時の取得（修正版）──
+    # ── 公表日時の取得 ──
     # サイトの形式: "地金価格2026年06月19日 09:30公表(日本時間)"
     full_text = soup.get_text()
     m = re.search(r'(\d{4})年(\d{1,2})月(\d{1,2})日\s*(\d{2}:\d{2})公表', full_text)
@@ -118,39 +121,109 @@ def fetch_tanaka_data():
 
     return data
 
-def update_html(data):
-    with open("index.html", "r", encoding="utf-8") as f:
-        html = f.read()
 
-    history_json = json.dumps(data["history"], ensure_ascii=False)
+# ──────────────────────────────────────────────────────────────
+#  ここから下が今回の改修ぶん（取得本体 fetch_tanaka_data は無改造）
+# ──────────────────────────────────────────────────────────────
 
-    new_data_block = f"""const TANAKA_DATA = {{
-  retail: {data['retail'] or 0},
-  buy: {data['buy'] or 0},
-  retailDiff: {data['retailDiff'] or 0},
-  buyDiff: {data['buyDiff'] or 0},
-  publishedAt: "{data['publishedAt']}",
-  history: {history_json}
-}};"""
+def load_prev():
+    """前回の data.json を読む（無ければ None）。取得失敗時の“前回良好データ”保持に使う。"""
+    try:
+        with open(DATA_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return None
 
-    pattern = r'const TANAKA_DATA = \{[\s\S]*?\};'
-    new_html = re.sub(pattern, new_data_block, html, count=1)
 
-    now_str = datetime.now().strftime("%Y年%m月%d日 %H:%M")
-    # フッターの「最終取得: …」を次のタグ直前まで置換（カッコの有無に関わらず一致）
-    new_html = re.sub(r'最終取得:[^<]*', f'最終取得: {now_str} （自動更新）', new_html)
+def is_valid(data):
+    """スクレイプ結果が妥当か検証。1つでも外れたら「取得失敗」とみなす。"""
+    if not data:
+        return False, "データが None"
+    r, b = data.get("retail"), data.get("buy")
+    if not isinstance(r, int) or not (3000 <= r <= 60000):
+        return False, f"小売価格が異常: {r}"
+    if not isinstance(b, int) or not (3000 <= b <= 60000):
+        return False, f"買取価格が異常: {b}"
+    if not data.get("history"):
+        return False, "履歴が空"
+    return True, ""
 
-    pub_date = data['publishedAt'][:10] if data['publishedAt'] else now_str[:10]
-    new_html = re.sub(r'<span class="status-label">[^<]*</span>', f'<span class="status-label">{pub_date}</span>', new_html)
 
-    with open("index.html", "w", encoding="utf-8") as f:
-        f.write(new_html)
+def merge_buy_history(data, prev):
+    """買取の過去推移を“誠実”にする。
+    - 当日の買取は実値（今回スクレイプ値）。
+    - 過去に実値として記録済みの日付はその実値を維持。
+    - それ以外の日付は『小売 − 当日の売買差額』で推定し、buyEstimated=True を付ける。
+    これにより、運用を続けるほど実値の買取履歴が積み上がっていく。
+    """
+    today = data["publishedAt"][:10]
+    spread = data["retail"] - data["buy"]
 
-    print(f"✅ 更新完了: 小売 ¥{data['retail']:,}/g, 買取 ¥{data['buy']:,}/g ({data['publishedAt']})")
-    print(f"   前日比: {data['retailDiff']:+d}円, 履歴件数: {len(data['history'])}件")
+    real = {}
+    if prev and isinstance(prev.get("history"), list):
+        for r in prev["history"]:
+            if r.get("buyEstimated") is False and isinstance(r.get("buy"), int):
+                real[r["date"]] = r["buy"]
+    real[today] = data["buy"]  # 当日は必ず実値
+
+    out = []
+    for r in data["history"]:
+        d = r["date"]
+        if d in real:
+            out.append({"date": d, "retail": r["retail"], "buy": real[d], "buyEstimated": False})
+        else:
+            out.append({"date": d, "retail": r["retail"], "buy": r["retail"] - spread, "buyEstimated": True})
+    return out
+
+
+def write_data_json(out):
+    with open(DATA_FILE, "w", encoding="utf-8") as f:
+        json.dump(out, f, ensure_ascii=False, indent=2)
+
 
 if __name__ == "__main__":
     print("田中貴金属 プラチナ価格を取得中...")
-    data = fetch_tanaka_data()
-    print(f"取得データ: 小売={data['retail']}, 買取={data['buy']}, 前日比={data['retailDiff']}, 公表={data['publishedAt']}")
-    update_html(data)
+    now_str = datetime.now().strftime("%Y/%m/%d %H:%M")
+    prev = load_prev()
+
+    data = None
+    fetch_error = ""
+    try:
+        data = fetch_tanaka_data()
+        print(f"取得データ: 小売={data['retail']}, 買取={data['buy']}, 前日比={data['retailDiff']}, 公表={data['publishedAt']}")
+    except Exception as e:
+        fetch_error = f"取得処理で例外: {e}"
+        print(f"❌ {fetch_error}")
+
+    ok, reason = is_valid(data)
+    if ok:
+        history = merge_buy_history(data, prev)
+        real_cnt = sum(1 for h in history if not h["buyEstimated"])
+        out = {
+            "status": "ok",
+            "error": "",
+            "lastChecked": now_str,
+            "retail": data["retail"],
+            "buy": data["buy"],
+            "retailDiff": data["retailDiff"],
+            "buyDiff": data["buyDiff"],
+            "publishedAt": data["publishedAt"],
+            "history": history,
+        }
+        write_data_json(out)
+        print(f"✅ data.json 更新: 小売 ¥{data['retail']:,}/g, 買取 ¥{data['buy']:,}/g ({data['publishedAt']})")
+        print(f"   前日比: {data['retailDiff']:+d}円, 履歴 {len(history)}件（うち買取実値 {real_cnt}件）")
+    else:
+        # 取得失敗：前回の良好データを保持しつつ status=error にする（画面は前回値を表示、メールは警告）
+        msg = fetch_error or f"取得値が妥当でない（{reason}）"
+        base = prev if prev else {
+            "retail": 0, "buy": 0, "retailDiff": 0, "buyDiff": 0,
+            "publishedAt": "不明", "history": []
+        }
+        out = dict(base)
+        out["status"] = "error"
+        out["error"] = msg
+        out["lastChecked"] = now_str
+        write_data_json(out)
+        print(f"⚠️ 取得失敗のため status=error で記録: {msg}")
+        print("   （価格・履歴は前回取得分を保持しました）")
