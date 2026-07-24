@@ -1,13 +1,19 @@
 {
   "status": "ok",
   "error": "",
-  "lastChecked": "2026/07/23 00:40",
-  "retail": 9688,
-  "buy": 9266,
-  "retailDiff": 47,
-  "buyDiff": 48,
-  "publishedAt": "2026/07/23 09:30",
+  "lastChecked": "2026/07/24 00:40",
+  "retail": 9471,
+  "buy": 9048,
+  "retailDiff": -217,
+  "buyDiff": -218,
+  "publishedAt": "2026/07/24 09:30",
   "history": [
+    {
+      "date": "2026/07/24",
+      "retail": 9471,
+      "buy": 9048,
+      "buyEstimated": false
+    },
     {
       "date": "2026/07/23",
       "retail": 9688,
@@ -119,253 +125,247 @@
     {
       "date": "2026/06/26",
       "retail": 9358,
-      "buy": 8936,
+      "buy": 8935,
       "buyEstimated": true
     },
     {
       "date": "2026/06/25",
       "retail": 9276,
-      "buy": 8854,
+      "buy": 8853,
       "buyEstimated": true
     },
     {
       "date": "2026/06/24",
       "retail": 9638,
-      "buy": 9216,
+      "buy": 9215,
       "buyEstimated": true
     },
     {
       "date": "2026/06/23",
       "retail": 9737,
-      "buy": 9315,
+      "buy": 9314,
       "buyEstimated": true
     },
     {
       "date": "2026/06/22",
       "retail": 9722,
-      "buy": 9300,
+      "buy": 9299,
       "buyEstimated": true
     },
     {
       "date": "2026/06/19",
       "retail": 9812,
-      "buy": 9390,
+      "buy": 9389,
       "buyEstimated": true
     },
     {
       "date": "2026/06/18",
       "retail": 10191,
-      "buy": 9769,
+      "buy": 9768,
       "buyEstimated": true
     },
     {
       "date": "2026/06/17",
       "retail": 10470,
-      "buy": 10048,
+      "buy": 10047,
       "buyEstimated": true
     },
     {
       "date": "2026/06/16",
       "retail": 10191,
-      "buy": 9769,
+      "buy": 9768,
       "buyEstimated": true
     },
     {
       "date": "2026/06/15",
       "retail": 10227,
-      "buy": 9805,
+      "buy": 9804,
       "buyEstimated": true
     },
     {
       "date": "2026/06/12",
       "retail": 9964,
-      "buy": 9542,
+      "buy": 9541,
       "buyEstimated": true
     },
     {
       "date": "2026/06/11",
       "retail": 9606,
-      "buy": 9184,
+      "buy": 9183,
       "buyEstimated": true
     },
     {
       "date": "2026/06/10",
       "retail": 9909,
-      "buy": 9487,
+      "buy": 9486,
       "buyEstimated": true
     },
     {
       "date": "2026/06/09",
       "retail": 10094,
-      "buy": 9672,
+      "buy": 9671,
       "buyEstimated": true
     },
     {
       "date": "2026/06/08",
       "retail": 10382,
-      "buy": 9960,
+      "buy": 9959,
       "buyEstimated": true
     },
     {
       "date": "2026/06/05",
       "retail": 10852,
-      "buy": 10430,
+      "buy": 10429,
       "buyEstimated": true
     },
     {
       "date": "2026/06/04",
       "retail": 10789,
-      "buy": 10367,
+      "buy": 10366,
       "buyEstimated": true
     },
     {
       "date": "2026/06/03",
       "retail": 11115,
-      "buy": 10693,
+      "buy": 10692,
       "buyEstimated": true
     },
     {
       "date": "2026/06/02",
       "retail": 11115,
-      "buy": 10693,
+      "buy": 10692,
       "buyEstimated": true
     },
     {
       "date": "2026/06/01",
       "retail": 11110,
-      "buy": 10688,
+      "buy": 10687,
       "buyEstimated": true
     },
     {
       "date": "2026/05/29",
       "retail": 11025,
-      "buy": 10603,
+      "buy": 10602,
       "buyEstimated": true
     },
     {
       "date": "2026/05/28",
       "retail": 11050,
-      "buy": 10628,
+      "buy": 10627,
       "buyEstimated": true
     },
     {
       "date": "2026/05/27",
       "retail": 11245,
-      "buy": 10823,
+      "buy": 10822,
       "buyEstimated": true
     },
     {
       "date": "2026/05/26",
       "retail": 11169,
-      "buy": 10747,
+      "buy": 10746,
       "buyEstimated": true
     },
     {
       "date": "2026/05/25",
       "retail": 11209,
-      "buy": 10787,
+      "buy": 10786,
       "buyEstimated": true
     },
     {
       "date": "2026/05/22",
       "retail": 11233,
-      "buy": 10811,
+      "buy": 10810,
       "buyEstimated": true
     },
     {
       "date": "2026/05/21",
       "retail": 11123,
-      "buy": 10701,
+      "buy": 10700,
       "buyEstimated": true
     },
     {
       "date": "2026/05/20",
       "retail": 11082,
-      "buy": 10660,
+      "buy": 10659,
       "buyEstimated": true
     },
     {
       "date": "2026/05/19",
       "retail": 11355,
-      "buy": 10933,
+      "buy": 10932,
       "buyEstimated": true
     },
     {
       "date": "2026/05/18",
       "retail": 11279,
-      "buy": 10857,
+      "buy": 10856,
       "buyEstimated": true
     },
     {
       "date": "2026/05/15",
       "retail": 11727,
-      "buy": 11305,
+      "buy": 11304,
       "buyEstimated": true
     },
     {
       "date": "2026/05/14",
       "retail": 12172,
-      "buy": 11750,
+      "buy": 11749,
       "buyEstimated": true
     },
     {
       "date": "2026/05/13",
       "retail": 12008,
-      "buy": 11586,
+      "buy": 11585,
       "buyEstimated": true
     },
     {
       "date": "2026/05/12",
       "retail": 12063,
-      "buy": 11641,
+      "buy": 11640,
       "buyEstimated": true
     },
     {
       "date": "2026/05/11",
       "retail": 11473,
-      "buy": 11051,
+      "buy": 11050,
       "buyEstimated": true
     },
     {
       "date": "2026/05/08",
       "retail": 11467,
-      "buy": 11045,
+      "buy": 11044,
       "buyEstimated": true
     },
     {
       "date": "2026/05/07",
       "retail": 11640,
-      "buy": 11218,
+      "buy": 11217,
       "buyEstimated": true
     },
     {
       "date": "2026/05/01",
       "retail": 11308,
-      "buy": 10886,
+      "buy": 10885,
       "buyEstimated": true
     },
     {
       "date": "2026/04/30",
       "retail": 10937,
-      "buy": 10515,
+      "buy": 10514,
       "buyEstimated": true
     },
     {
       "date": "2026/04/28",
       "retail": 11513,
-      "buy": 11091,
+      "buy": 11090,
       "buyEstimated": true
     },
     {
       "date": "2026/04/27",
       "retail": 11488,
-      "buy": 11066,
-      "buyEstimated": true
-    },
-    {
-      "date": "2026/04/24",
-      "retail": 11599,
-      "buy": 11177,
+      "buy": 11065,
       "buyEstimated": true
     }
   ]
