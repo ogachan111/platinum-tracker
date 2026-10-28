@@ -1,7 +1,7 @@
 {
   "status": "error",
   "error": "取得値が妥当でない（小売価格が異常: None）",
-  "lastChecked": "2026/10/27 00:40",
+  "lastChecked": "2026/10/28 00:40",
   "retail": 9245,
   "buy": 8822,
   "retailDiff": -245,
