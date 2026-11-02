@@ -1,13 +1,55 @@
 {
-  "status": "error",
-  "error": "取得値が妥当でない（小売価格が異常: None）",
-  "lastChecked": "2026/10/30 00:40",
-  "retail": 9245,
-  "buy": 8822,
-  "retailDiff": -245,
-  "buyDiff": -246,
-  "publishedAt": "2026/10/22 09:30",
+  "status": "ok",
+  "error": "",
+  "lastChecked": "2026/11/02 00:40",
+  "retail": 8321,
+  "buy": 7898,
+  "retailDiff": -175,
+  "buyDiff": -175,
+  "publishedAt": "2026/11/02 09:30",
   "history": [
+    {
+      "date": "2026/11/02",
+      "retail": 8321,
+      "buy": 7898,
+      "buyEstimated": false
+    },
+    {
+      "date": "2026/10/30",
+      "retail": 8496,
+      "buy": 8073,
+      "buyEstimated": true
+    },
+    {
+      "date": "2026/10/29",
+      "retail": 8790,
+      "buy": 8367,
+      "buyEstimated": true
+    },
+    {
+      "date": "2026/10/28",
+      "retail": 8830,
+      "buy": 8407,
+      "buyEstimated": true
+    },
+    {
+      "date": "2026/10/27",
+      "retail": 8779,
+      "buy": 8356,
+      "buyEstimated": true
+    },
+    {
+      "date": "2026/10/26",
+      "retail": 8850,
+      "buy": 8427,
+      "buyEstimated": true
+    },
+    {
+      "date": "2026/10/23",
+      "retail": 8864,
+      "buy": 8441,
+      "buyEstimated": true
+    },
     {
       "date": "2026/10/22",
       "retail": 9245,
@@ -324,48 +366,6 @@
       "date": "2026/08/04",
       "retail": 9312,
       "buy": 8890,
-      "buyEstimated": false
-    },
-    {
-      "date": "2026/08/03",
-      "retail": 9365,
-      "buy": 8942,
-      "buyEstimated": true
-    },
-    {
-      "date": "2026/07/31",
-      "retail": 9600,
-      "buy": 9178,
-      "buyEstimated": false
-    },
-    {
-      "date": "2026/07/30",
-      "retail": 9553,
-      "buy": 9130,
-      "buyEstimated": false
-    },
-    {
-      "date": "2026/07/29",
-      "retail": 9527,
-      "buy": 9104,
-      "buyEstimated": false
-    },
-    {
-      "date": "2026/07/28",
-      "retail": 9574,
-      "buy": 9151,
-      "buyEstimated": false
-    },
-    {
-      "date": "2026/07/27",
-      "retail": 9574,
-      "buy": 9151,
-      "buyEstimated": false
-    },
-    {
-      "date": "2026/07/24",
-      "retail": 9471,
-      "buy": 9048,
       "buyEstimated": false
     }
   ]
