@@ -1,13 +1,19 @@
 {
   "status": "ok",
   "error": "",
-  "lastChecked": "2026/11/05 00:40",
-  "retail": 8644,
-  "buy": 8222,
-  "retailDiff": 453,
-  "buyDiff": 453,
-  "publishedAt": "2026/11/05 09:30",
+  "lastChecked": "2026/11/06 00:40",
+  "retail": 8670,
+  "buy": 8247,
+  "retailDiff": 26,
+  "buyDiff": 25,
+  "publishedAt": "2026/11/06 09:30",
   "history": [
+    {
+      "date": "2026/11/06",
+      "retail": 8670,
+      "buy": 8247,
+      "buyEstimated": false
+    },
     {
       "date": "2026/11/05",
       "retail": 8644,
@@ -29,37 +35,37 @@
     {
       "date": "2026/10/30",
       "retail": 8496,
-      "buy": 8074,
+      "buy": 8073,
       "buyEstimated": true
     },
     {
       "date": "2026/10/29",
       "retail": 8790,
-      "buy": 8368,
+      "buy": 8367,
       "buyEstimated": true
     },
     {
       "date": "2026/10/28",
       "retail": 8830,
-      "buy": 8408,
+      "buy": 8407,
       "buyEstimated": true
     },
     {
       "date": "2026/10/27",
       "retail": 8779,
-      "buy": 8357,
+      "buy": 8356,
       "buyEstimated": true
     },
     {
       "date": "2026/10/26",
       "retail": 8850,
-      "buy": 8428,
+      "buy": 8427,
       "buyEstimated": true
     },
     {
       "date": "2026/10/23",
       "retail": 8864,
-      "buy": 8442,
+      "buy": 8441,
       "buyEstimated": true
     },
     {
@@ -360,12 +366,6 @@
       "date": "2026/08/07",
       "retail": 9897,
       "buy": 9475,
-      "buyEstimated": false
-    },
-    {
-      "date": "2026/08/06",
-      "retail": 9980,
-      "buy": 9557,
       "buyEstimated": false
     }
   ]
