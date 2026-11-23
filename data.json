@@ -1,7 +1,7 @@
 {
   "status": "error",
-  "error": "取得処理で例外: HTTPSConnectionPool(host='gold.tanaka.co.jp', port=443): Read timed out. (read timeout=15)",
-  "lastChecked": "2026/11/20 00:40",
+  "error": "取得値が妥当でない（履歴が空）",
+  "lastChecked": "2026/11/23 00:40",
   "retail": 8013,
   "buy": 7590,
   "retailDiff": -274,
