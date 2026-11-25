@@ -1,13 +1,31 @@
 {
-  "status": "error",
-  "error": "取得値が妥当でない（小売価格が異常: None）",
-  "lastChecked": "2026/11/24 00:40",
-  "retail": 8013,
-  "buy": 7590,
-  "retailDiff": -274,
-  "buyDiff": -274,
-  "publishedAt": "2026/11/19 09:30",
+  "status": "ok",
+  "error": "",
+  "lastChecked": "2026/11/25 00:40",
+  "retail": 7320,
+  "buy": 6897,
+  "retailDiff": -384,
+  "buyDiff": -384,
+  "publishedAt": "2026/11/25 09:30",
   "history": [
+    {
+      "date": "2026/11/25",
+      "retail": 7320,
+      "buy": 6897,
+      "buyEstimated": false
+    },
+    {
+      "date": "2026/11/24",
+      "retail": 7704,
+      "buy": 7281,
+      "buyEstimated": true
+    },
+    {
+      "date": "2026/11/20",
+      "retail": 7827,
+      "buy": 7404,
+      "buyEstimated": true
+    },
     {
       "date": "2026/11/19",
       "retail": 8013,
@@ -348,24 +366,6 @@
       "date": "2026/08/26",
       "retail": 10673,
       "buy": 10250,
-      "buyEstimated": false
-    },
-    {
-      "date": "2026/08/25",
-      "retail": 10776,
-      "buy": 10354,
-      "buyEstimated": false
-    },
-    {
-      "date": "2026/08/24",
-      "retail": 10716,
-      "buy": 10293,
-      "buyEstimated": false
-    },
-    {
-      "date": "2026/08/21",
-      "retail": 10555,
-      "buy": 10133,
       "buyEstimated": false
     }
   ]
